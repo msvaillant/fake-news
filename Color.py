@@ -35,3 +35,10 @@ def display(str,c='default'):
     color(c)
     print(str)
     color('default')
+def error(str):
+	color('red')
+	print("============")
+	print(str)
+	print("============")
+	color('default')
+	exit()

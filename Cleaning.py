@@ -1,7 +1,8 @@
 import nltk
 from nltk.stem import *
 import re
-
+from Color import *
+import sys
 def tokenize(text):
     list_token=nltk.word_tokenize(text)
     return list_token
@@ -25,11 +26,31 @@ def particle_removal(tokens):
                 cleaned_list.append(token)
     return cleaned_list
 def clean(link):
-    text = get_Article(link)
-    tokens=tokenize(text)
-    stemmed_token = stem(tokens)
-    big_words = particle_removal(stemmed_token)
+    try:
+        text = get_Article(link)
+        display("   ==> Article Retrieved",'yellow')
+    except Exception as e:
+        error(e)
 
-    print(big_words)
+    try:
+        tokens=tokenize(text)
+        display("   ==> Tokenization : OK",'yellow')
+    except Exception as e:
+        error(e)
 
-clean("0.news")
+    try:
+        stemmed_token = stem(tokens)
+        display("   ==> Stem : OK",'yellow')
+    except Exception as e:
+        error(e)
+
+    try:
+        big_words = particle_removal(stemmed_token)
+        display("   ==> Ponctuation removal : OK",'yellow')
+    except Exception as e:
+        error(e)
+
+
+    #print(big_words)
+
+clean(sys.argv[1])
