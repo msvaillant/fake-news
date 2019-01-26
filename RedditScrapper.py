@@ -4,21 +4,26 @@
 
 import os
 import re
-from Color import *
 import sys
 import praw
 import requests
-from bs4 import BeautifulSoup
 
+from Color import *
+from bs4 import BeautifulSoup
+from pymongo import MongoClient
+from RedditRepository import RedditRepository
+from RedditNews import RedditNews
 
 
 class RedditScrapper():
-    def __init__(self,subredditlist, c_id,secret,nbnews = 500):
+    def __init__(self, subredditlist, c_id, secret, repository, nbnews = 500):
         self.subreddits = subredditlist
         self.client_id = c_id
         self.client_secret = secret
         self.nb_newsOK = 0
         self.nb_news = nbnews
+        self.repository = repository
+
     def get_reddit(self):
         return praw.Reddit(
             client_id=self.client_id,
@@ -26,8 +31,7 @@ class RedditScrapper():
             grant_type='client_credentials',
             user_agent='mytestscript/1.0')
 
-
-    def get_top(self,subreddit_name):
+    def get_top(self, subreddit_name):
         print(subreddit_name)
         dirname = 'news'
         os.makedirs(dirname, exist_ok=True)
@@ -37,8 +41,8 @@ class RedditScrapper():
         top_subs = reddit.subreddit(subreddit_name).top(limit=1000)
         return top_subs
 
-    def create_news(self,subreddit_name):
-
+    def create_news(self, subreddit_name):
+        dirname = 'news'
         top_subs=self.get_top(subreddit_name)
         # Remove those submissions that belongs to reddit
         subs = [sub for sub in top_subs if not sub.domain.startswith('self.')]
@@ -48,13 +52,16 @@ class RedditScrapper():
             sub = subs.pop(0)
             article = self.get_article(sub.url)
             if article:
+                # save to database
+                news = RedditNews(article)
+                self.repository.insert(news)
+
+                # save to files
                 text = '\n\n'.join(article['content'])
                 filename = str(self.nb_newsOK) + '.news'
 
-
                 if len(text)!=0:
                     self.nb_newsOK +=1
-
                     try:
                         open(os.path.join(dirname, filename), 'w').write(text)
                         display(filename+"\n",'yellow')
@@ -63,7 +70,7 @@ class RedditScrapper():
                     count -= 1
 
 
-    def get_article(self,url):
+    def get_article(self, url):
         display('  - Retrieving %s' % url,'blue')
         try:
             res = requests.get(url)
@@ -73,15 +80,13 @@ class RedditScrapper():
                 print('      => done, title = "%s"' % str(self.nb_newsOK))
                 return article
             else:
-
                 display('      x fail or not html',"red")
-
         except Exception as e:
             print(e)
             pass
 
 
-    def parse_article(self,text):
+    def parse_article(self, text):
         soup = BeautifulSoup(text, 'html.parser')
 
         # find the article title
@@ -102,8 +107,7 @@ class RedditScrapper():
 
         return {'title': h1.text, 'content': content}
 
-
-    def tag2md(self,tag):
+    def tag2md(self, tag):
         if tag.name == 'p':
             return tag.text
         elif tag.name == 'h1':
@@ -115,9 +119,7 @@ class RedditScrapper():
         elif tag.name == 'pre':
             return f'```\n{tag.text}\n```'
 
-
     def main(self):
-
         for sr in self.subreddits:
             print('Scraping /r/%s...' % sr)
             self.create_news(sr)
@@ -127,9 +129,20 @@ class RedditScrapper():
 
 # In[3]:
 
-fconf = open("Config.conf","r")
+fconf = open("Config.conf", "r")
 raw = fconf.read()
 id= raw.split(':')[0]
 secret=raw.split(':')[1]
-scrapper = RedditScrapper(['The_Donald'],id,secret,int(sys.argv[1]))
+client = MongoClient()
+repository = RedditRepository(client)
+scrapper = RedditScrapper(subredditlist=['The_Donald'], c_id=id, secret=secret, nbnews=int(sys.argv[1]), repository=repository)
 scrapper.main()
+
+
+
+
+
+
+
+
+
