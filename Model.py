@@ -26,10 +26,10 @@ def preprocessing():
             list_target.append(news.getVeracity())
 
 
-    appCorpus = list_text[:1400]
-    testCorpus = list_text[1400:]
-    appTarget = list_target[:1400]
-    testTarget = list_target[1400:]
+    appCorpus = list_text[:1000]
+    testCorpus = list_text[1000:]
+    appTarget = list_target[:1000]
+    testTarget = list_target[1000:]
     display(" Preprocessing : OK",'yellow')
     process(appCorpus,appTarget,testCorpus,testTarget)
 
@@ -42,6 +42,7 @@ def process(appCorpus,appTarget,testCorpus,testTarget):
     for array in testCorpus:
         joinedTestCorpus.append(' '.join(array))
     train_vectors = vectorizer.fit_transform(joinedAppCorpus)
+    # print(train_vectors)
     test_vectors = vectorizer.transform(joinedTestCorpus)
     joinedAppCorpus=np.array(joinedAppCorpus)
     joinedTestCorpus=np.array(joinedTestCorpus)
@@ -49,20 +50,17 @@ def process(appCorpus,appTarget,testCorpus,testTarget):
     testTarget=np.array(testTarget)
     print(appTarget.shape)
     print(testTarget.shape)
-    model = MultinomialNB().fit(train_vectors, appTarget)
+    model = MultinomialNB(alpha=0,fit_prior=False).fit(train_vectors, appTarget)
+    print(model.get_params())
     predicted = model.predict(test_vectors)
     display("Accuracy = "+str(accuracy_score(testTarget,predicted)),'yellow')
     confusion=confusion_matrix(testTarget, predicted)
-    matrice_confusion = pd.DataFrame(confusion, ["mostly false","mixture of true and false","no factual content","mostly true"],
-                  ["mostly false","mixture of true and false","no factual content","mostly true"])
+
+    matrice_confusion = pd.DataFrame(confusion, ["mostly false","mixture of true and false","mostly true"],
+                  ["mostly false","mixture of true and false","mostly true"])
+    pprint(matrice_confusion)
     plt.figure(figsize = (10,7))
     sns.set(font_scale=1.4)#for label size
     sns.heatmap(matrice_confusion, annot=True,annot_kws={"size": 16})
     plt.show()
-# preprocessing()
-sns.set()
-
-x = np.linspace(0, 10, 500)
-y = np.random.randn(500)
-plt.plot(x,y)
-plt.show()
+preprocessing()
