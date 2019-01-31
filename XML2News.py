@@ -24,7 +24,10 @@ def getNewsFromXML(link):
     if 'orientation' in article:
         orientation = article['orientation']
     if 'veracity' in article:
-        veracity = article['veracity']
+        if article['veracity'] == 'mixture of true and false':
+            veracity = "mostly false"
+        else:
+            veracity = article['veracity']
     if 'title' in article:
         title = article['title']
     newsInstance = News(author,mainText,hyperlink,orientation,veracity,title)
@@ -32,6 +35,8 @@ def getNewsFromXML(link):
 def createNews():
     news = []
     for filename in os.listdir('articles'):
-        news.append(getNewsFromXML('articles/'+filename))
+        new = getNewsFromXML('articles/'+filename)
+        if new.getVeracity() != 'no factual content' and new.getVeracity() != 'mixture of true and false':
+            news.append(new)
         #news.append(json.dumps(getNewsFromXML('articles/'+filename).__dict__))
     return news

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <!-- Root element -->
+  <xs:element name="article" type="article"/>
+
+  <!-- Helper type for text markup, always refers to the mainText of the article -->
+  <xs:complexType name="span">
+    <xs:sequence>
+      <!-- The character offset in the mainText at which this span ends -->
+      <xs:element name="end" type="xs:int"/>
+      <!-- The character offset in the mainText at which this span starts -->
+      <xs:element name="start" type="xs:int"/>
+    </xs:sequence>
+    <!-- If this span in the mainText corresponds to a hyperlink, this attribute gives the target URL of the hyperlink -->
+    <xs:attribute name="href" type="xs:string"/>
+  </xs:complexType>
+
+  <!-- Type of the root element -->
+  <xs:complexType name="article">
+    <xs:sequence>
+      <!-- Author of the news article -->
+      <xs:element name="author" type="xs:string" minOccurs="0"/>
+      <!-- Extents of one hyperlink in the mainText (see complexType span) -->
+      <xs:element name="hyperlink" type="span" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- The mainText of the news article, extracted using a custom-made content extractor tailored to the news portal -->
+      <xs:element name="mainText" type="xs:string"/>
+      <!-- Political orientation of the news article, one of "left", "mainstream", or "right" -->
+      <xs:element name="orientation" type="xs:string"/>
+      <!-- Extents of one paragraph in the mainText (see complexType span) -->
+      <xs:element name="paragraph" type="span" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- The news portal that linked to this news article on their facebook page -->
+      <xs:element name="portal" type="xs:string"/>
+      <!-- Extents of a quotation in the mainText (see complexType span) -->
+      <xs:element name="quote" type="span" minOccurs="0" maxOccurs="unbounded"/>
+      <!-- Title of the news article -->
+      <xs:element name="title" type="xs:string"/>
+      <!-- Original URI of the news article -->
+      <xs:element name="uri" type="xs:string"/>
+      <!-- Expert annotation of veracity/truthfulness -->
+      <xs:element name="veracity" type="veracity" minOccurs="0"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Classes used by the expert annotation of veracity/truthfulness -->
+  <xs:simpleType name="veracity">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="mostly true"/>
+      <xs:enumeration value="mixture of true and false"/>
+      <xs:enumeration value="mostly false"/>
+      <xs:enumeration value="no factual content"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>
+
