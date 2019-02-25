@@ -3,6 +3,8 @@ import os
 from News import *
 import json
 from pprint import pprint
+import csv
+
 schema = xmlschema.XMLSchema('schema.xsd')
 
 def getNewsFromXML(link):
@@ -24,7 +26,10 @@ def getNewsFromXML(link):
     if 'orientation' in article:
         orientation = article['orientation']
     if 'veracity' in article:
-        veracity = article['veracity']
+        if article['veracity'] == 'mixture of true and false' :
+            veracity = "mostly false"
+        else:
+            veracity = article['veracity']
     if 'title' in article:
         title = article['title']
     newsInstance = News(author,mainText,hyperlink,orientation,veracity,title)
@@ -32,6 +37,28 @@ def getNewsFromXML(link):
 def createNews():
     news = []
     for filename in os.listdir('articles'):
-        news.append(getNewsFromXML('articles/'+filename))
+        new = getNewsFromXML('articles/'+filename)
+        if new.getVeracity() != 'no factual content' and new.getVeracity() != 'mixture of true and false':
+            news.append(new)
         #news.append(json.dumps(getNewsFromXML('articles/'+filename).__dict__))
+    return news
+def createNewsNew():
+    news = []
+    with open("Fake.csv","r") as f:
+        file = csv.reader(f, delimiter=',', quotechar='"')
+        for index,line in enumerate(file):
+            print("article n°"+str(index)+ " de Fake")
+            text=line[1]
+            title=line[0]
+            article = News("author",text,"links","orientation","mostly false",title)
+            news.append(article)
+    with open("True.csv","r") as f:
+        file = csv.reader(f, delimiter=',', quotechar='"')
+        for index,line in enumerate(file):
+            print("article n°"+str(index)+ " de True")
+            text=line[1]
+            title=line[0]
+            article = News("author",text,"links","orientation","mostly true",title)
+            news.append(article)
+
     return news
