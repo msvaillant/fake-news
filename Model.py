@@ -16,10 +16,11 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.pipeline import make_pipeline
-import pickle
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType,StringTensorType
 
@@ -28,9 +29,13 @@ vectorizer = TfidfVectorizer()
 def preprocessing(appCorpus,appTarget,testCorpus,testTarget):
     """
     Function that shuffle the corpus for the differents model
-
+    Shape :
+        appCorpus : List of list of token
+        appTarget : List of symbols {'mostly true','mostly false'}
+        testCorpus : List of list of token
+        testTarget : List of symbols {'mostly true','mostly false'}
     """
-    # Regroupment of the 2 lists
+    # Regroupment of the 2 lists in a list of tuples
     appBoth = list(zip(appCorpus,appTarget))
     # Shuffle
     random.shuffle(appBoth)
@@ -60,27 +65,35 @@ def process(appCorpus,appTarget,testCorpus,testTarget):
     testTarget=np.array(testTarget)
 
     # The vectorizer is on top of the file, it's a TfidfVectorizer without any customization
-    # To ease the save of the model I used a sklearn pipeline that contain a TfidfVectorizer and a Bayésian model.
+    # To ease the save of the model I used a sklearn pipeline that contain a TfidfVectorizer and a Bayesian model.
     # The bayesian model is set without any prior probability to avoid a bias due to a huge gap in the number of samples of each class
-    model = MultinomialNB(alpha=0,fit_prior=False)
+    # model = MultinomialNB(alpha=0,fit_prior=False)
+    # model = SVC(gamma=2, C=1)
+    # model = MLPClassifier(alpha=1)
+    model = SVC(kernel="linear", C=0.025)
     pipe = make_pipeline(vectorizer,model)
     pipe.fit(joinedAppCorpus,appTarget)
     # The pipe goes into a list of model (maybe not in the future)
     return(pipe)
 
-def eval(ev):
+def main(ev):
+    """
+    Main Programme
+    Parameters:
+        - ev: boolean that mean evaluation or not
+    """
     joinedTestCorpus = [] # Array of sentence
     model_list = [] # List of model
     list_text = [] # temporary list of token
     list_target = [] # temporary list of veracity
 
-    # The list is created by the file XML2News.py, it's a list of News object
-    news_list = createNewsNew()
+    # The list is created by the file XML2News.py, it's a list of News object, the parameters is 1 or 2
+    news_list = createNews(2)
     display("=> List OK",'yellow')
     # First shuffle of the list, just to mix the false and true data from the creation.
     random.shuffle(news_list)
     # To avoid a calculation time to long I use only a part of the total list.
-    news_list = news_list[:5000]
+    news_list = news_list[:]
     # Treatement of the news. We only need to do it once so I don't put it in the preprocessing,
     # maybe in the future a news function to do it could be cool
     for index,news in enumerate(news_list):
@@ -91,7 +104,7 @@ def eval(ev):
             list_text.append(news.getCleanedText())
             list_target.append(news.getVeracity())
         if index%100==0 :
-            print("News n°{} tagged".format(index))
+            print("News n{} tagged".format(index))
     display("clean ok",'yellow')
     # This split the corpus into Learning and testing corpus with a ratio 2/3 1/3s
     # I call Corpus the text and target the veracity
@@ -107,7 +120,7 @@ def eval(ev):
 
         model_list.append(preprocessing(appCorpus,appTarget,testCorpus,testTarget))
         display("Model "+ str(i) +" : OK",'yellow')
-    display("=>DONE Start of the evaluation ","yellow")
+    display("=>DONE Start of the mainuation ","yellow")
 
     # Evaluation of the model.
     if ev:
@@ -129,7 +142,7 @@ def eval(ev):
             predicted[predicted == 'mostly true']=1
             predicted = [int(item) for item in predicted]
             resList.append(predicted)
-            print("Model n°"+str(index)+" utilisé")
+            print("Model n"+str(index)+" used")
         resList = np.array(resList)
         # Vertical sum of the result.
         pred = list(map(sum,zip(*list(resList))))
@@ -154,11 +167,12 @@ def eval(ev):
         with open("Model.onnx", "wb") as f:
             f.write(onx.SerializeToString())
     else:
+        pass
         # New argument possible
     return model_list
 
 # With or without evaluation.
 if len(sys.argv) == 2:
-    model_list = eval(True)
+    model_list = main(True)
 else:
-    model_list = eval(False)
+    model_list = main(False)

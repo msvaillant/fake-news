@@ -55,18 +55,32 @@ class News(object):
         self.taggedTextTemp=[]
         self.taggedText=[]
     def clean_text(self):
+        """
+        Apply a serie of treatment on a text
+            - Tokenization
+            - Removal of the english stopwords(little word that don't bring anything to the meaning)
+            - Stemming
+            - Removal of the small stemmed token
+        These operations are defined in Cleaning.py
+        """
         tokens=tokenize(self.title)
         stop_words = set(stopwords.words('english'))
         tokens = [w for w in tokens if not w in stop_words]
         stemmed_token = stem(tokens)
         big_words = particle_removal(stemmed_token)
         self.cleanedText = big_words
-        
+
     def tag_text(self):
+        """
+        Apply a grammar tag on the text
+        """
         for sen in self.rawArticle.split('.'):
             self.taggedTextTemp.append(nltk.pos_tag(word_tokenize(sen)))
 
     def getTaggedText(self):
+        """
+        Transform and return the list of tag into integer
+        """
         for sentences in self.taggedTextTemp:
             sent = []
 
@@ -82,8 +96,15 @@ class News(object):
                 self.taggedText.append(sent[:padmax])
 
         return self.taggedText
+
     def getCleanedText(self):
+        """
+        Getter for the text cleaned
+        """
         return self.cleanedText
 
     def getVeracity(self):
+        """
+        Getter for the veracity
+        """
         return self.veracity
