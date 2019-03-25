@@ -21,15 +21,27 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.pipeline import make_pipeline
-from skl2onnx import convert_sklearn
+from onnxmltools import convert_sklearn
+from onnxmltools.utils import save_model
 from skl2onnx.common.data_types import FloatTensorType,StringTensorType
-
-
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class Model(object):
     """docstring for Model."""
-    def __init__(self,eval,save):
+    def show_most_informative_features(self,vectorizer, clf, n=20):
+        feature_names = vectorizer.get_feature_names()
+        coefs_with_fns = sorted(zip(clf.coef_[0], feature_names))
+        top = zip(coefs_with_fns[:n], coefs_with_fns[:-(n + 1):-1])
+        for (coef_1, fn_1), (coef_2, fn_2) in top:
+            predict = self.pipe.predict([fn_2])
+            if predict=='mostly false' or predict==0:
+                display("\t%.4f\t%-15s\t\t%.4f\t%-15s"%(coef_1, fn_1, coef_2, fn_2),'red')
+            if predict=='mostly true' or predict==1:
+                display("\t%.4f\t%-15s\t\t%.4f\t%-15s"%(coef_1, fn_1, coef_2, fn_2),'yellow')
+    def __init__(self,eval,save,evaldiff):
         super(Model, self).__init__()
+
         self.vectorizer = TfidfVectorizer()
         self.model = MultinomialNB(alpha=0,fit_prior=False)
         # model = SVC(gamma=2, C=1)
@@ -46,7 +58,7 @@ class Model(object):
         # First shuffle of the list, just to mix the false and true data from the creation.
         random.shuffle(news_list)
         # To avoid a calculation time to long I use only a part of the total list.
-        news_list = news_list[:]
+        news_list = news_list[:5000]
         # Treatement of the news. We only need to do it once so I don't put it in the preprocessing,
         # maybe in the future a news function to do it could be cool
         for index,news in enumerate(news_list):
@@ -76,6 +88,8 @@ class Model(object):
             display(" Evaluation : OK",'yellow')
         if save:
             self.save()
+        if evaldiff:
+            self.evaldiff()
 
     def changeModel(self,model):
         old_model = str(self.model)
@@ -127,14 +141,17 @@ class Model(object):
         # model = MLPClassifier(alpha=1)
         self.pipe = make_pipeline(self.vectorizer,self.model)
         self.pipe.fit(joinedAppCorpus,self.appTarget)
+        print(type(self.pipe.steps[1][1]))
+        self.show_most_informative_features(self.vectorizer, self.pipe.steps[1][1], 20)
 
     def save(self):
         # Onnx Save (can't save a list of model for now)
+
         onx = convert_sklearn(self.pipe, 'Pipe',
                                      [('input', StringTensorType([1, 1]))])
 
-        with open("Model.onnx", "wb") as f:
-            f.write(onx.SerializeToString())
+        save_model(onx, "Model.onnx")
+
         print ("Model saved")
     def eval(self):
         """
@@ -165,7 +182,7 @@ class Model(object):
         self.testTarget[self.testTarget=='mostly true']=int(1)
         self.testTarget = [int(item) for item in self.testTarget]
         resList =[]
-        print()
+
         # Prediction for each model
         for index,model in enumerate(model_list):
             print(len(joinedTestCorpus))
@@ -195,12 +212,60 @@ class Model(object):
         display("Precision for False = "+str(precisionFalse),'yellow')
         display("Precision for True = "+str(precisionTrue),'yellow')
         pprint(matrice_confusion)
-        return((accuracy_score(self.testTarget,pred),precisionFalse,precisionTrue))
+        # return((accuracy_score(self.testTarget,pred),precisionFalse,precisionTrue))
+
+    def evaldiff(self):
+        corpus=createNews(1)
+        joinedCorpus=[]
+        list_text = []
+        list_target = []
+        for index,news in enumerate(corpus):
+            # This don't return anything, only the getters return the value
+            news.clean_text()
+            # I don't take the text without texts
+            if (len(news.getCleanedText())>0):
+                list_text.append(news.getCleanedText())
+                list_target.append(news.getVeracity())
+            if index%1000==0 :
+                print("News n{} tagged".format(index))
+        display("Clean : OK",'yellow')
+        for array in list_text:
+
+            joinedCorpus.append(' '.join(array))
+        corpusTarget = list_target
+        print(np.unique(corpusTarget))
+        print(corpusTarget)
+        newcorpus = []
+        for item in corpusTarget:
+            if item == 'mostly false':
+                newcorpus.append(0)
+            else:
+                newcorpus.append(1)
+        corpusTarget = newcorpus
+
+        corpusTarget = [int(item) for item in corpusTarget]
+        predicted = self.pipe.predict(np.array(joinedCorpus))
+        predicted[predicted == 'mostly false']=int(0)
+        predicted[predicted == 'mostly true']=int(1)
+        predicted = [int(item) for item in predicted]
+        print(predicted)
+
+        display("Accuracy of the combined model = "+str(accuracy_score(corpusTarget, predicted)),'yellow')
+        confusion=confusion_matrix(corpusTarget, predicted)
+        matrice_confusion = pd.DataFrame(confusion, ["0","1"],
+                      ["0","1"])
+        precisionFalse = confusion[0][0]/(np.sum(confusion[0]))
+        precisionTrue = confusion[1][1]/(np.sum(confusion[1]))
+        display("Precision for False = "+str(precisionFalse),'yellow')
+        display("Precision for True = "+str(precisionTrue),'yellow')
+        pprint(matrice_confusion)
+        return((accuracy_score(corpusTarget, predicted),precisionFalse,precisionTrue))
+
 
 classifiers = [MultinomialNB(alpha=0,fit_prior=False),SVC(gamma=2, C=1),MLPClassifier(alpha=1),SVC(kernel="linear", C=0.025)]
 res = []
 models = []
-models.append(Model(False,True))
+models.append(Model(False,True,False))
 for model in models:
     res.append(model.eval())
     # try:
