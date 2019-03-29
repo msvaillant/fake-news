@@ -28,10 +28,26 @@ colours = {
 	"on_white"   :    "\033[47m" }
 
 def color(nom):
+	"""
+	Change the color of the terminal output
+	"""
 	# on évite print à cause du '\n' inséré automatiquement
 	sys.stdout.write(colours[nom])
 
 def display(str,c='default'):
-    color(c)
-    print(str)
-    color('default')
+	"""
+	Pretty print for the terminal, default color is the defaut color of the terminal
+	"""
+	color(c)
+	print(str)
+	color('default')
+def error(str):
+	"""
+	Show a pretty error and quit the app
+	"""
+	color('red')
+	print("============")
+	print(str)
+	print("============")
+	color('default')
+	exit()

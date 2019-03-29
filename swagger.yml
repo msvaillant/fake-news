@@ -1,0 +1,35 @@
+swagger: "2.0"
+info:
+  description: This is the swagger file that goes with our server code
+  version: "1.0.0"
+  title: Swagger Rest Article
+consumes:
+  - application/json
+produces:
+  - application/json
+
+basePath: /api
+
+# Paths supported by the server application
+paths:
+  /predict/{url}:
+    get:
+      operationId: Prediction.valider
+      tags:
+        - Prediction
+      summary: Get the score
+      description: Get the score
+      parameters:
+        - name: url
+          in: path
+          description: url of the website
+          type: string
+          required: True
+      responses:
+        200:
+          description: Score successfully calculated
+          schema:
+            type: object
+            properties:
+              score:
+                type: string
